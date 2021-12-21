@@ -62,7 +62,10 @@ class MobileNetV3LargeEncoder(MobileNetV3):
     def forward_time_series(self, x):
         B, T = x.shape[:2]
         features = self.forward_single_frame(x.flatten(0, 1))
-        features = [f.unflatten(0, (B, T)) for f in features]
+        if torch.onnx.is_in_onnx_export():
+            features = [torch.unsqueeze(f, dim=0) for f in features]
+        else:
+            features = [f.unflatten(0, (B, T)) for f in features]
         return features
 
     def forward(self, x):

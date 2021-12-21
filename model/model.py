@@ -43,7 +43,7 @@ class MattingNetwork(nn.Module):
                 r2: Optional[Tensor] = None,
                 r3: Optional[Tensor] = None,
                 r4: Optional[Tensor] = None,
-                downsample_ratio: float = 1,
+                downsample_ratio: float = 0.4,
                 segmentation_pass: bool = False):
         
         if downsample_ratio != 1:
@@ -68,6 +68,11 @@ class MattingNetwork(nn.Module):
             return [seg, *rec]
 
     def _interpolate(self, x: Tensor, scale_factor: float):
+        if torch.onnx.is_in_onnx_export():
+            x = F.interpolate(x, scale_factor=scale_factor,
+                              mode='bilinear', align_corners=False, recompute_scale_factor=False)
+            return x
+            return torch.unsqueeze(x, dim=0)
         if x.ndim == 5:
             B, T = x.shape[:2]
             x = F.interpolate(x.flatten(0, 1), scale_factor=scale_factor,

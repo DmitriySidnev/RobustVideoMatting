@@ -50,8 +50,12 @@ class DeepGuidedFilterRefiner(nn.Module):
             base_fgr.flatten(0, 1),
             base_pha.flatten(0, 1),
             base_hid.flatten(0, 1))
-        fgr = fgr.unflatten(0, (B, T))
-        pha = pha.unflatten(0, (B, T))
+        if torch.onnx.is_in_onnx_export():
+            fgr = torch.unsqueeze(fgr, dim=0)
+            pha = torch.unsqueeze(pha, dim=0)
+        else:
+            fgr = fgr.unflatten(0, (B, T))
+            pha = pha.unflatten(0, (B, T))
         return fgr, pha
     
     def forward(self, fine_src, base_src, base_fgr, base_pha, base_hid):

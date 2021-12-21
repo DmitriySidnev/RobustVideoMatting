@@ -206,6 +206,12 @@ Please refer to the [training documentation](documentation/training.md) to train
 
 <br>
 
+## Export to ONNX
+
+Please refer to the [export documentation](documentation/export.md) to export a model to ONNX.
+
+<br>
+
 ## Speed
 
 Speed is measured with `inference_speed_test.py` for reference.

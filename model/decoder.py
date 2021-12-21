@@ -42,9 +42,14 @@ class AvgPool(nn.Module):
         B, T = s0.shape[:2]
         s0 = s0.flatten(0, 1)
         s1, s2, s3 = self.forward_single_frame(s0)
-        s1 = s1.unflatten(0, (B, T))
-        s2 = s2.unflatten(0, (B, T))
-        s3 = s3.unflatten(0, (B, T))
+        if torch.onnx.is_in_onnx_export():
+            s1 = torch.unsqueeze(s1, dim=0)
+            s2 = torch.unsqueeze(s2, dim=0)
+            s3 = torch.unsqueeze(s3, dim=0)
+        else:
+            s1 = s1.unflatten(0, (B, T))
+            s2 = s2.unflatten(0, (B, T))
+            s3 = s3.unflatten(0, (B, T))
         return s1, s2, s3
     
     def forward(self, s0):
@@ -98,7 +103,10 @@ class UpsamplingBlock(nn.Module):
         x = x[:, :, :H, :W]
         x = torch.cat([x, f, s], dim=1)
         x = self.conv(x)
-        x = x.unflatten(0, (B, T))
+        if torch.onnx.is_in_onnx_export():
+            x = torch.unsqueeze(x, dim=0)
+        else:
+            x = x.unflatten(0, (B, T))
         a, b = x.split(self.out_channels // 2, dim=2)
         b, r = self.gru(b, r)
         x = torch.cat([a, b], dim=2)
@@ -139,7 +147,10 @@ class OutputBlock(nn.Module):
         x = x[:, :, :H, :W]
         x = torch.cat([x, s], dim=1)
         x = self.conv(x)
-        x = x.unflatten(0, (B, T))
+        if torch.onnx.is_in_onnx_export():
+            x = torch.unsqueeze(x, dim=0)
+        else:
+            x = x.unflatten(0, (B, T))
         return x
     
     def forward(self, x, s):
@@ -166,7 +177,8 @@ class ConvGRU(nn.Module):
         )
         
     def forward_single_frame(self, x, h):
-        r, z = self.ih(torch.cat([x, h], dim=1)).split(self.channels, dim=1)
+        xh = torch.cat([x, h], dim=1)
+        r, z = self.ih(xh).split(self.channels, dim=1)
         c = self.hh(torch.cat([x, r * h], dim=1))
         h = (1 - z) * h + z * c
         return h, h
@@ -200,7 +212,11 @@ class Projection(nn.Module):
     
     def forward_time_series(self, x):
         B, T = x.shape[:2]
-        return self.conv(x.flatten(0, 1)).unflatten(0, (B, T))
+        if torch.onnx.is_in_onnx_export():
+            x = self.conv(x.flatten(0, 1))
+            return torch.unsqueeze(x, dim=0)
+        else:
+            return self.conv(x.flatten(0, 1)).unflatten(0, (B, T))
         
     def forward(self, x):
         if x.ndim == 5:

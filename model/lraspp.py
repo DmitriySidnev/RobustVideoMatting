@@ -1,3 +1,4 @@
+import torch
 from torch import nn
 
 class LRASPP(nn.Module):
@@ -19,7 +20,11 @@ class LRASPP(nn.Module):
     
     def forward_time_series(self, x):
         B, T = x.shape[:2]
-        x = self.forward_single_frame(x.flatten(0, 1)).unflatten(0, (B, T))
+        if torch.onnx.is_in_onnx_export():
+            x = self.forward_single_frame(x.flatten(0, 1))
+            x = torch.unsqueeze(x, dim=0)
+        else:
+            x = self.forward_single_frame(x.flatten(0, 1)).unflatten(0, (B, T))
         return x
     
     def forward(self, x):
